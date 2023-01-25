@@ -10,6 +10,7 @@ resources:
         tags:
         - update-docker
 pr: none
+trigger: none
 schedules:
 - cron: "0 13 * * Mon-Fri"
   displayName: M-F daily build
