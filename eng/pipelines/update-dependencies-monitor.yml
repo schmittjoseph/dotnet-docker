@@ -1,4 +1,14 @@
-trigger: none
+resources:
+  pipelines:
+    - pipeline: dotnet-monitor
+      source: dotnet-dotnet-monitor
+      trigger:
+        branches:
+          include:
+          - release/*
+          - internal/release/*
+        tags:
+        - update-docker
 pr: none
 schedules:
 - cron: "0 13 * * Mon-Fri"
@@ -17,11 +27,18 @@ stages:
     pool:
       vmImage: $(defaultLinuxAmd64PoolImage)
     steps:
-    - pwsh: $(engPath)/Get-MonitorDropVersions.ps1 -Channel $(MajorMinorVersion)/$(ChannelQuality)
-      displayName: Get Versions
+    - ${{ if eq(variables['Build.Reason'], 'ResourceTrigger') }}:
+      - download: dotnet-monitor
+        artifact: buildversion
+      - pwsh: $(engPath)/Get-MonitorDropVersions.ps1 -BuildVersionFilePath "$(Pipeline.Workspace)/dotnet-monitor/buildversion/buildversion"
+        displayName: Get Versions (Resource Trigger)
+    - ${{ else }}:
+      - pwsh: $(engPath)/Get-MonitorDropVersions.ps1 -Channel $(MajorMinorVersion)/$(ChannelQuality)
+        displayName: Get Versions
+
     - powershell: |
-        $customArgs = "$(MajorMinorVersion) --product-version monitor=$(monitorVer) --version-source-name dotnet/dotnet-monitor/$(MajorMinorVersion) --stable-branding=$(stableBranding)"
-        
+        $customArgs = "$(monitorMajorMinorVersion) --product-version monitor=$(monitorVer) --version-source-name dotnet/dotnet-monitor/$(monitorMajorMinorVersion) --stable-branding=$(stableBranding)"
+
         $customArgsArray = @($customArgs)
         echo "##vso[task.setvariable variable=customArgsArray]$($customArgsArray | ConvertTo-Json -Compress -AsArray)"
       displayName: Set Custom Args
