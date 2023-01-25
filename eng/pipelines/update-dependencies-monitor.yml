@@ -9,8 +9,8 @@ resources:
           - internal/release/*
         tags:
         - update-docker
-pr: none
 trigger: none
+pr: none
 schedules:
 - cron: "0 13 * * Mon-Fri"
   displayName: M-F daily build
@@ -18,6 +18,11 @@ schedules:
     include:
     - nightly
   always: true
+parameters:
+- name: usePipelineResource
+  displayName: 'Use dotnet-monitor pipeline resource?'
+  type: boolean
+  default: false
 variables:
 - template: ../common/templates/variables/dotnet/common.yml
 stages:
@@ -28,9 +33,10 @@ stages:
     pool:
       vmImage: $(defaultLinuxAmd64PoolImage)
     steps:
-    - ${{ if eq(variables['Build.Reason'], 'ResourceTrigger') }}:
+    - ${{ if or(eq(parameters.usePipelineResource, true), eq(variables['Build.Reason'], 'ResourceTrigger')) }}:
       - download: dotnet-monitor
         artifact: buildversion
+        displayName: "Download Build Version (Branch: $(resources.pipeline.dotnet-monitor.sourceBranch))"
       - pwsh: $(engPath)/Get-MonitorDropVersions.ps1 -BuildVersionFilePath "$(Pipeline.Workspace)/dotnet-monitor/buildversion/buildversion"
         displayName: Get Versions (Resource Trigger)
     - ${{ else }}:
