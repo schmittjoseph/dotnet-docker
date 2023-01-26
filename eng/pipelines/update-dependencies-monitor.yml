@@ -33,9 +33,6 @@ stages:
     pool:
       vmImage: $(defaultLinuxAmd64PoolImage)
     steps:
-    - ${{ if eq(variables['Build.Reason'], 'ResourceTrigger') }}:
-      - powershell: |
-          echo "resource trigger"
     - download: dotnet-monitor
       artifact: Build_Info
       displayName: "Download Build Info (Branch: $(resources.pipeline.dotnet-monitor.sourceBranch))"
