@@ -2,6 +2,9 @@ resources:
   pipelines:
     - pipeline: dotnet-monitor
       source: dotnet-dotnet-monitor
+      branch: main # Default used by the schedule or manual invocations. Triggers it will use triggering branch instead.
+      tags:
+      - real signed
       trigger:
         branches:
           include:
@@ -9,6 +12,8 @@ resources:
           - internal/release/*
         tags:
         - update-docker
+        - real signed
+        - MonitorRelease
 trigger: none
 pr: none
 schedules:
@@ -18,11 +23,6 @@ schedules:
     include:
     - nightly
   always: true
-parameters:
-- name: usePipelineResource
-  displayName: 'Use dotnet-monitor pipeline resource?'
-  type: boolean
-  default: false
 variables:
 - template: ../common/templates/variables/dotnet/common.yml
 stages:
@@ -33,16 +33,14 @@ stages:
     pool:
       vmImage: $(defaultLinuxAmd64PoolImage)
     steps:
-    - ${{ if or(eq(parameters.usePipelineResource, true), eq(variables['Build.Reason'], 'ResourceTrigger')) }}:
-      - download: dotnet-monitor
-        artifact: buildversion
-        displayName: "Download Build Version (Branch: $(resources.pipeline.dotnet-monitor.sourceBranch))"
-      - pwsh: $(engPath)/Get-MonitorDropVersions.ps1 -BuildVersionFilePath "$(Pipeline.Workspace)/dotnet-monitor/buildversion/buildversion"
-        displayName: Get Versions (Resource Trigger)
-    - ${{ else }}:
-      - pwsh: $(engPath)/Get-MonitorDropVersions.ps1 -Channel $(MajorMinorVersion)/$(ChannelQuality)
-        displayName: Get Versions
-
+    - ${{ if eq(variables['Build.Reason'], 'ResourceTrigger') }}:
+      - powershell: |
+          echo "resource trigger"
+    - download: dotnet-monitor
+      artifact: Build_Info
+      displayName: "Download Build Info (Branch: $(resources.pipeline.dotnet-monitor.sourceBranch))"
+    - pwsh: $(engPath)/Get-MonitorDropVersions.ps1 -BuildVersionFilePath "$(Pipeline.Workspace)/dotnet-monitor/Build_Info/buildversion"
+      displayName: Get Versions (Resource Trigger)
     - powershell: |
         $customArgs = "$(monitorMajorMinorVersion) --product-version monitor=$(monitorVer) --version-source-name dotnet/dotnet-monitor/$(monitorMajorMinorVersion) --stable-branding=$(stableBranding)"
 
